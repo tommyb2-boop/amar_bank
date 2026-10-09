@@ -41,20 +41,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-  // 1. Handle Admin Login
+    // Handle Admin Login khusus pencocokan PIN
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
     const pinToMatch = adminPin.trim();
-    // Gunakan props admins, jika kosong gunakan INITIAL_ADMINS sebagai cadangan
+    
+    // Mengambil data admin (menggunakan fallback INITIAL_ADMINS jika props kosong)
     const adminList = admins && admins.length > 0 ? admins : INITIAL_ADMINS;
+    
+    // Mencari admin berdasarkan PIN yang diinput
     const admin = adminList.find((a) => a.pin === pinToMatch);
 
     if (admin) {
-      onAdminLogin(admin);
+      onAdminLogin(admin); // Berhasil masuk ke dashboard admin
     } else {
-      setErrorMessage('PIN Admin tidak valid. Gunakan PIN default: 123456');
+      setErrorMessage('PIN Admin salah. Masukkan 6 digit PIN (123456).');
     }
   };
 
