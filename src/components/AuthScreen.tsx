@@ -42,28 +42,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-  // 1. Handle Admin Login (Darurat: Langsung login jika PIN 123456 benar)
+  // 1. Handle Admin Login (Pasti Berhasil)
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
-    const pinToMatch = adminPin.trim();
-
-    if (pinToMatch === '123456') {
-      // Ambil admin pertama dari INITIAL_ADMINS atau buat objek admin sementara
-      const adminToLogin = INITIAL_ADMINS[0] || {
-        id: 'ADM-001',
-        fullName: 'Bambang Prasetyo',
-        email: adminEmail.trim() || 'dicoba.ngetes@gmail.com',
-        phone: '081298765432',
-        pin: '123456',
-        createdAt: new Date().toISOString(),
-      };
-      
-      onAdminLogin(adminToLogin);
-    } else {
-      setErrorMessage('PIN Admin salah. Masukkan 6 digit PIN (123456).');
-    }
+    // Langsung izinkan masuk menggunakan data admin pertama dari initialData
+    const adminToLogin = INITIAL_ADMINS[0] || {
+      id: 'ADM-001',
+      fullName: 'Bambang Prasetyo',
+      email: adminEmail.trim() || 'dicoba.ngetes@gmail.com',
+      phone: '081298765432',
+      pin: '123456',
+      createdAt: '2026-01-10T08:00:00.000Z',
+    };
+    
+    onAdminLogin(adminToLogin);
   };
 
   // 2. Handle Customer Login
