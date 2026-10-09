@@ -69,18 +69,21 @@ export default function App() {
   });
 
   // Current Auth Session
-  const [currentUser, setCurrentUser] = useState<{
-    role: 'ADMIN' | 'CUSTOMER' | null;
-    adminData?: AdminUser;
-    customerData?: Customer;
-  }>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_SESSION);
-      return saved ? JSON.parse(saved) : { role: 'ADMIN', adminData: INITIAL_ADMINS[0] };
-    } catch {
-      return { role: 'ADMIN', adminData: INITIAL_ADMINS[0] };
-    }
-  });
+const [currentUser, setCurrentUser] = useState<{
+  role: 'ADMIN' | 'CUSTOMER' | null;
+  adminData?: AdminUser;
+  customerData?: Customer;
+}>(() => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_SESSION);
+    // Jika perangkat sudah pernah login, muat data sesi tersimpan.
+    // Jika perangkat baru / belum pernah login, set role ke null agar wajib ke halaman login.
+    return saved ? JSON.parse(saved) : { role: null };
+  } catch {
+    return { role: null };
+  }
+});
+
 
   // Optional Phone Simulation Frame Toggle (desktop view)
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
