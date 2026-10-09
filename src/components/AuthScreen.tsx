@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AdminUser, Customer } from '../types';
 import { AmarBankLogo } from './AmarBankLogo';
-import { Lock, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Mail } from 'lucide-react';
 import { INITIAL_ADMINS } from '../data/initialData';
 
 interface AuthScreenProps {
@@ -25,7 +25,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [portalMode, setPortalMode] = useState<PortalMode>('ADMIN');
   const [adminStep] = useState<AdminAuthStep>('LOGIN');
 
-    // Admin login states
+  // Admin login states
   const [adminPin, setAdminPin] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
 
@@ -167,9 +167,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <form onSubmit={handleAdminSubmit} className="space-y-4">
                 <div className="text-center mb-1">
                   <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Pengelola</h3>
-                  <p className="text-xs text-slate-500">Masukkan 6-digit PIN keamanan Admin</p>
+                  <p className="text-xs text-slate-500">Masukkan Email dan 6-digit PIN Admin</p>
                 </div>
 
+                {/* Kotak Input Email Admin */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-blue-900" />
+                    <span>Alamat Email Admin</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Contoh: dicoba.ngetes@gmail.com"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-700 focus:bg-white text-xs font-semibold text-slate-900 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Kotak Input PIN Admin */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 text-blue-900" />
@@ -178,7 +195,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <input
                     type="password"
                     maxLength={6}
-                    autoFocus
                     required
                     placeholder="Masukkan 6 Digit PIN (Default: 123456)"
                     value={adminPin}
