@@ -25,7 +25,6 @@ export default function App() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  // Current Auth Session (tetap menggunakan localStorage untuk sesi login perangkat)
   const [currentUser, setCurrentUser] = useState<{
     role: 'ADMIN' | 'CUSTOMER' | null;
     adminData?: AdminUser;
@@ -41,7 +40,6 @@ export default function App() {
 
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
 
-  // Sinkronisasi Real-Time dari Firebase Firestore & Pengecekan Otomatis Status Pinjaman
   useEffect(() => {
     const unsubAdmins = onSnapshot(collection(db, "admins"), (snapshot) => {
       if (!snapshot.empty) {
@@ -69,7 +67,6 @@ export default function App() {
       if (!snapshot.empty) {
         const data = snapshot.docs.map(doc => doc.data() as Loan);
         
-        // Pengecekan status otomatis secara aman di dalam snapshot listener
         data.forEach(async (loan) => {
           let updatedStatus = loan.status;
           if (loan.remainingBalance <= 0 && loan.status !== 'LUNAS') {
@@ -136,19 +133,12 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Handlers
   const handleAdminLogin = (admin: AdminUser) => {
-    setCurrentUser({
-      role: 'ADMIN',
-      adminData: admin,
-    });
+    setCurrentUser({ role: 'ADMIN', adminData: admin });
   };
 
   const handleCustomerLogin = (customer: Customer) => {
-    setCurrentUser({
-      role: 'CUSTOMER',
-      customerData: customer,
-    });
+    setCurrentUser({ role: 'CUSTOMER', customerData: customer });
   };
 
   const handleRegisterAdmin = async (newAdmin: AdminUser) => {
@@ -165,10 +155,7 @@ export default function App() {
 
   const handleUpdateAdminProfile = async (updatedAdmin: AdminUser) => {
     await setDoc(doc(db, "admins", updatedAdmin.id), updatedAdmin);
-    setCurrentUser((prev) => ({
-      ...prev,
-      adminData: updatedAdmin,
-    }));
+    setCurrentUser((prev) => ({ ...prev, adminData: updatedAdmin }));
   };
 
   const handleResetAllData = async () => {
@@ -186,14 +173,9 @@ export default function App() {
 
   const handleLocalBackup = () => {
     const backupData = {
-      admins,
-      customers,
-      loans,
-      payments,
-      notifications,
+      admins, customers, loans, payments, notifications,
       backupDate: new Date().toISOString(),
     };
-
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
@@ -292,7 +274,6 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${isPhoneFrame ? 'bg-slate-900 py-6 px-4 flex items-center justify-center' : 'bg-slate-100'} relative`}>
-      
       <div className="fixed top-3 right-3 z-50 no-print hidden md:flex items-center gap-1.5 p-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white border border-white/20 shadow-md">
         <button
           onClick={() => setIsPhoneFrame(false)}
@@ -375,7 +356,6 @@ export default function App() {
 
         <Watermark />
       </div>
-
     </div>
   );
 }
