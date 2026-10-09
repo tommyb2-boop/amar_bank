@@ -190,7 +190,6 @@ export default function App() {
     );
   };
 
-  // Handler untuk memperbarui Profil & Password Admin dari menu pengaturan
   const handleUpdateAdminProfile = (updatedAdmin: AdminUser) => {
     setAdmins((prev) =>
       prev.map((a) => (a.id === updatedAdmin.id ? updatedAdmin : a))
@@ -201,7 +200,6 @@ export default function App() {
     }));
   };
 
-  // Handler untuk Reset Data Total (Menghapus seluruh database dan localStorage)
   const handleResetAllData = () => {
     setCustomers([]);
     setLoans([]);
@@ -216,6 +214,53 @@ export default function App() {
     alert('Semua data sistem berhasil di-reset total.');
   };
 
+  // Fungsi Backup Lokal (Download file JSON)
+  const handleLocalBackup = () => {
+    const backupData = {
+      admins,
+      customers,
+      loans,
+      payments,
+      notifications,
+      backupDate: new Date().toISOString(),
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `amar_bank_backup_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  // Fungsi Restore Lokal (Import dari file JSON)
+  const handleLocalRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
+      fileReader.onload = (event) => {
+        try {
+          const parsedData = JSON.parse(event.target?.result as string);
+          if (parsedData && parsedData.customers && parsedData.loans) {
+            if (window.confirm("Apakah Anda yakin ingin memulihkan data dari file ini? Data saat ini akan ditimpa.")) {
+              if (parsedData.admins) setAdmins(parsedData.admins);
+              if (parsedData.customers) setCustomers(parsedData.customers);
+              if (parsedData.loans) setLoans(parsedData.loans);
+              if (parsedData.payments) setPayments(parsedData.payments);
+              if (parsedData.notifications) setNotifications(parsedData.notifications);
+              alert("Data berhasil dipulihkan dari file lokal!");
+            }
+          } else {
+            alert("Format file cadangan tidak valid.");
+          }
+        } catch (error) {
+          alert("Gagal membaca file JSON.");
+        }
+      };
+    }
+  };
+
   const handleLogout = () => {
     setCurrentUser({ role: null });
   };
@@ -228,7 +273,6 @@ export default function App() {
     setCustomers((prev) =>
       prev.map((c) => (c.id === updatedCust.id ? updatedCust : c))
     );
-    // Also update loans name/phone
     setLoans((prev) =>
       prev.map((l) =>
         l.customerId === updatedCust.id
@@ -248,7 +292,6 @@ export default function App() {
       prev.map((l) => (l.id === updatedLoan.id ? updatedLoan : l))
     );
 
-    // Add notification
     const newNotif: NotificationItem = {
       id: `NOTIF-${Date.now()}`,
       title: 'Pembayaran Baru Terverifikasi',
@@ -280,7 +323,7 @@ export default function App() {
   return (
     <div className={`min-h-screen ${isPhoneFrame ? 'bg-slate-900 py-6 px-4 flex items-center justify-center' : 'bg-slate-100'} relative`}>
       
-      {/* Device Frame View Switcher (Desktop Convenience for smartphone preview) */}
+      {/* Device Frame View Switcher */}
       <div className="fixed top-3 right-3 z-50 no-print hidden md:flex items-center gap-1.5 p-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white border border-white/20 shadow-md">
         <button
           onClick={() => setIsPhoneFrame(false)}
@@ -312,7 +355,6 @@ export default function App() {
             : 'min-h-screen'
         }`}
       >
-        {/* Notch for Phone frame simulation */}
         {isPhoneFrame && (
           <div className="sticky top-0 z-50 w-32 h-5 bg-slate-800 rounded-b-xl mx-auto flex items-center justify-center pointer-events-none mb-1">
             <div className="w-3 h-3 rounded-full bg-slate-950 mr-2" />
@@ -350,10 +392,12 @@ export default function App() {
             onLogout={handleLogout}
             onUpdateAdminProfile={handleUpdateAdminProfile}
             onResetAllData={handleResetAllData}
+            onLocalBackup={handleLocalBackup}
+            onLocalRestore={handleLocalRestore}
           />
         )}
 
-        {/* 3. If logged in as CUSTOMER -> Show CustomerPortal (Zero Leakage) */}
+        {/* 3. If logged in as CUSTOMER -> Show CustomerPortal */}
         {currentUser.role === 'CUSTOMER' && currentUser.customerData && (
           <CustomerPortal
             currentCustomer={currentUser.customerData}
@@ -364,7 +408,6 @@ export default function App() {
           />
         )}
 
-        {/* Exclusive Watermark: "The Update" anchored at bottom-right of every screen */}
         <Watermark />
       </div>
 
