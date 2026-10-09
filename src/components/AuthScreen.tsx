@@ -1,28 +1,27 @@
 import React, { useState } from 'react';
 import { AdminUser, Customer } from '../types';
 import { AmarBankLogo } from './AmarBankLogo';
-import { generateOTP } from '../utils/formatters';
-import { Lock, Mail, Phone, User, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Lock, Mail, Phone, User, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Settings, Trash2 } from 'lucide-react';
 
 interface AuthScreenProps {
   admins: AdminUser[];
   customers: Customer[];
   onAdminLogin: (admin: AdminUser) => void;
   onCustomerLogin: (customer: Customer) => void;
-  onRegisterAdmin: (newAdmin: AdminUser) => void;
-  onResetAdminPin: (email: string, newPin: string) => void;
+  onUpdateAdminProfile?: (updatedAdmin: AdminUser) => void;
+  onResetAllData?: () => void;
 }
 
 type PortalMode = 'ADMIN' | 'CUSTOMER';
-type AdminAuthStep = 'LOGIN' | 'REGISTER' | 'FORGOT_STEP_1' | 'FORGOT_STEP_2';
+type AdminAuthStep = 'LOGIN' | 'SETTINGS' | 'RESET_DATA_CONFIRM';
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   admins,
   customers,
   onAdminLogin,
   onCustomerLogin,
-  onRegisterAdmin,
-  onResetAdminPin,
+  onUpdateAdminProfile,
+  onResetAllData,
 }) => {
   const [portalMode, setPortalMode] = useState<PortalMode>('ADMIN');
   const [adminStep, setAdminStep] = useState<AdminAuthStep>('LOGIN');
@@ -31,20 +30,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [adminPin, setAdminPin] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
 
-  // Admin register states
-  const [regFullName, setRegFullName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regPin, setRegPin] = useState('');
-  const [regPinConfirm, setRegPinConfirm] = useState('');
+  // Logged-in admin session simulation for profile editing (if editing while logged in)
+  const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(admins[0] || null);
 
-  // Admin Forgot states
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
-  const [inputOtp, setInputOtp] = useState('');
+  // Admin Profile & Password Settings states
+  const [editFullName, setEditFullName] = useState(currentAdmin?.fullName || '');
+  const [editEmail, setEditEmail] = useState(currentAdmin?.email || '');
+  const [editPhone, setEditPhone] = useState(currentAdmin?.phone || '');
+  const [oldPin, setOldPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newPinConfirm, setNewPinConfirm] = useState('');
-  const [otpSentNotification, setOtpSentNotification] = useState<string | null>(null);
 
   // Customer login states
   const [customerIdentifier, setCustomerIdentifier] = useState('');
@@ -70,101 +65,75 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     );
 
     if (admin) {
+      setCurrentAdmin(admin);
       onAdminLogin(admin);
     } else {
-      setErrorMessage('PIN Admin tidak valid. Periksa kembali atau gunakan fitur Lupa Password.');
+      setErrorMessage('PIN Admin tidak valid. Periksa kembali PIN Anda.');
     }
   };
 
-  // 2. Handle Admin Register
-  const handleAdminRegister = (e: React.FormEvent) => {
+  // 2. Handle Update Admin Profile & Password
+  const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
-    if (!regFullName.trim() || !regEmail.trim() || !regPhone.trim()) {
-      setErrorMessage('Harap lengkapi semua kolom pendaftaran.');
+    if (!currentAdmin) {
+      setErrorMessage('Tidak ada sesi admin yang aktif.');
       return;
     }
 
-    if (regPin.length < 6) {
-      setErrorMessage('PIN minimal harus 6 digit angka.');
+    if (!editFullName.trim() || !editEmail.trim() || !editPhone.trim()) {
+      setErrorMessage('Harap lengkapi informasi profil.');
       return;
     }
 
-    if (regPin !== regPinConfirm) {
-      setErrorMessage('Konfirmasi PIN tidak cocok dengan PIN yang dibuat.');
-      return;
+    let updatedPin = currentAdmin.pin;
+
+    // If changing PIN
+    if (oldPin || newPin || newPinConfirm) {
+      if (oldPin !== currentAdmin.pin) {
+        setErrorMessage('PIN lama tidak sesuai.');
+        return;
+      }
+      if (newPin.length < 6) {
+        setErrorMessage('PIN baru minimal harus 6 digit angka.');
+        return;
+      }
+      if (newPin !== newPinConfirm) {
+        setErrorMessage('Konfirmasi PIN baru tidak cocok.');
+        return;
+      }
+      updatedPin = newPin.trim();
     }
 
-    // Check duplicate email
-    if (admins.some((a) => a.email.toLowerCase() === regEmail.trim().toLowerCase())) {
-      setErrorMessage('Email tersebut sudah terdaftar sebagai admin.');
-      return;
-    }
-
-    const newAdmin: AdminUser = {
-      id: `ADM-${String(admins.length + 1).padStart(3, '0')}`,
-      fullName: regFullName.trim(),
-      email: regEmail.trim(),
-      phone: regPhone.trim(),
-      pin: regPin.trim(),
-      createdAt: new Date().toISOString(),
+    const updatedData: AdminUser = {
+      ...currentAdmin,
+      fullName: editFullName.trim(),
+      email: editEmail.trim(),
+      phone: editPhone.trim(),
+      pin: updatedPin,
     };
 
-    onRegisterAdmin(newAdmin);
-    setSuccessMessage('Pendaftaran Admin berhasil! Silakan masuk dengan PIN baru Anda.');
+    if (onUpdateAdminProfile) {
+      onUpdateAdminProfile(updatedData);
+    }
+    setCurrentAdmin(updatedData);
+    setSuccessMessage('Pengaturan profil dan password berhasil diperbarui!');
+    setOldPin('');
+    setNewPin('');
+    setNewPinConfirm('');
+  };
+
+  // 3. Handle Reset All Data Confirmation
+  const handleConfirmResetAll = () => {
+    if (onResetAllData) {
+      onResetAllData();
+    }
+    setSuccessMessage('Semua data sistem berhasil di-reset total.');
     setAdminStep('LOGIN');
-    setAdminPin(regPin);
   };
 
-  // 3. Handle Forgot Step 1 (Request OTP via Email)
-  const handleRequestOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    clearMessages();
-
-    const targetEmail = forgotEmail.trim().toLowerCase();
-    const admin = admins.find((a) => a.email.toLowerCase() === targetEmail);
-
-    if (!admin) {
-      setErrorMessage('Email tidak terdaftar sebagai admin di sistem Amar Bank.');
-      return;
-    }
-
-    const otp = generateOTP();
-    setGeneratedOtp(otp);
-    setOtpSentNotification(`Kode OTP verifikasi telah dikirim ke: ${targetEmail}`);
-    setSuccessMessage(`Simulasi Email: Kode verifikasi OTP Anda adalah ${otp}. Berlaku 10 menit.`);
-    setAdminStep('FORGOT_STEP_2');
-  };
-
-  // 4. Handle Forgot Step 2 (Verify OTP & Reset PIN)
-  const handleVerifyOtpAndReset = (e: React.FormEvent) => {
-    e.preventDefault();
-    clearMessages();
-
-    if (inputOtp.trim() !== generatedOtp.trim()) {
-      setErrorMessage('Kode OTP verifikasi salah. Harap periksa kembali.');
-      return;
-    }
-
-    if (newPin.length < 6) {
-      setErrorMessage('PIN baru minimal harus 6 digit angka.');
-      return;
-    }
-
-    if (newPin !== newPinConfirm) {
-      setErrorMessage('Konfirmasi PIN baru tidak sesuai.');
-      return;
-    }
-
-    onResetAdminPin(forgotEmail.trim().toLowerCase(), newPin.trim());
-    setSuccessMessage('PIN Admin berhasil diperbarui! Silakan login dengan PIN baru.');
-    setAdminStep('LOGIN');
-    setAdminPin(newPin);
-    setOtpSentNotification(null);
-  };
-
-  // 5. Handle Customer Login (Clean & Secure - Zero Leakage)
+  // 4. Handle Customer Login
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
@@ -187,7 +156,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     if (customer) {
       onCustomerLogin(customer);
     } else {
-      setErrorMessage('ID Pelanggan / No. HP atau PIN tidak sesuai. Hubungi Admin jika Anda lupa PIN.');
+      setErrorMessage('ID Pelanggan / No. HP atau PIN tidak sesuai.');
     }
   };
 
@@ -297,51 +266,58 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <span>Buka Akses Admin</span>
                 </button>
 
-                {/* Auxiliary Links */}
-                <div className="pt-2 flex items-center justify-between text-xs text-slate-600">
+                {/* Auxiliary Links: Pengaturan & Reset Data Total */}
+                <div className="pt-2 flex items-center justify-between text-xs text-slate-600 border-t border-slate-100 mt-4">
                   <button
                     type="button"
                     onClick={() => {
-                      setAdminStep('FORGOT_STEP_1');
+                      if (currentAdmin) {
+                        setEditFullName(currentAdmin.fullName);
+                        setEditEmail(currentAdmin.email);
+                        setEditPhone(currentAdmin.phone);
+                      }
+                      setAdminStep('SETTINGS');
                       clearMessages();
                     }}
-                    className="hover:text-blue-900 underline font-medium cursor-pointer"
+                    className="flex items-center gap-1 hover:text-blue-900 font-medium cursor-pointer text-slate-700"
                   >
-                    Lupa Password?
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Pengaturan Profil & Password</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
-                      setAdminStep('REGISTER');
+                      setAdminStep('RESET_DATA_CONFIRM');
                       clearMessages();
                     }}
-                    className="text-blue-900 font-bold hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-rose-600 font-semibold hover:underline cursor-pointer"
                   >
-                    Daftar Pertama Kali
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Reset Data Total</span>
                   </button>
                 </div>
               </form>
             )}
 
-            {/* 2. DAFTAR PERTAMA KALI (ADMIN REGISTER) */}
-            {adminStep === 'REGISTER' && (
-              <form onSubmit={handleAdminRegister} className="space-y-3.5">
+            {/* 2. PENGATURAN EDIT PROFIL & PASSWORD */}
+            {adminStep === 'SETTINGS' && (
+              <form onSubmit={handleUpdateProfile} className="space-y-3.5">
                 <div className="text-center mb-1">
-                  <h3 className="text-base font-bold text-slate-900">Pendaftaran Akun Admin</h3>
-                  <p className="text-xs text-slate-500">Lengkapi formulir pendaftaran admin baru</p>
+                  <h3 className="text-base font-bold text-slate-900">Pengaturan Admin</h3>
+                  <p className="text-xs text-slate-500">Ubah profil akun atau perbarui PIN sandi Anda</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
                     <User className="w-3.5 h-3.5 text-blue-900" />
-                    <span>Nama Lengkap *</span>
+                    <span>Nama Lengkap</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Nama Lengkap Petugas"
-                    value={regFullName}
-                    onChange={(e) => setRegFullName(e.target.value)}
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
                   />
                 </div>
@@ -349,14 +325,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-blue-900" />
-                    <span>Email Resmi *</span>
+                    <span>Email Resmi</span>
                   </label>
                   <input
                     type="email"
                     required
-                    placeholder="nama@amarbank.co.id"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
                   />
                 </div>
@@ -364,105 +339,63 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-blue-900" />
-                    <span>No. WhatsApp / HP *</span>
+                    <span>No. WhatsApp / HP</span>
                   </label>
                   <input
                     type="tel"
                     required
-                    placeholder="0812xxxxxxxx"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Buat PIN (6 Angka) *
-                    </label>
+                <div className="border-t border-slate-100 pt-2">
+                  <p className="text-xs font-bold text-slate-800 mb-2">Ubah PIN / Password (Opsional)</p>
+                  
+                  <div className="mb-2">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">PIN Lama</label>
                     <input
                       type="password"
                       maxLength={6}
-                      required
-                      placeholder="6 Digit PIN"
-                      value={regPin}
-                      onChange={(e) => setRegPin(e.target.value.replace(/\D/g, ''))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
+                      placeholder="Masukkan PIN lama jika ingin mengubah"
+                      value={oldPin}
+                      onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Konfirmasi PIN *
-                    </label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      required
-                      placeholder="Ulangi PIN"
-                      value={regPinConfirm}
-                      onChange={(e) => setRegPinConfirm(e.target.value.replace(/\D/g, ''))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
-                    />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">PIN Baru (6 Digit)</label>
+                      <input
+                        type="password"
+                        maxLength={6}
+                        placeholder="PIN Baru"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Konfirmasi PIN</label>
+                      <input
+                        type="password"
+                        maxLength={6}
+                        placeholder="Ulangi PIN"
+                        value={newPinConfirm}
+                        onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ''))}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 px-4 rounded-2xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs transition-colors shadow-md shadow-blue-900/20 cursor-pointer mt-1"
+                  className="w-full py-3 px-4 rounded-2xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs transition-colors shadow-md shadow-blue-900/20 cursor-pointer mt-1"
                 >
-                  Daftarkan Akun Admin
-                </button>
-
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAdminStep('LOGIN');
-                      clearMessages();
-                    }}
-                    className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                  >
-                    Sudah punya akun? Kembali ke Login
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* 3. LUPA PASSWORD - STEP 1 (INPUT EMAIL) */}
-            {adminStep === 'FORGOT_STEP_1' && (
-              <form onSubmit={handleRequestOtp} className="space-y-4">
-                <div className="text-center mb-1">
-                  <h3 className="text-base font-bold text-slate-900">Verifikasi Email Admin</h3>
-                  <p className="text-xs text-slate-500">
-                    Langkah 1: Masukkan email terdaftar untuk menerima 6-digit OTP
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-blue-900" />
-                    <span>Email Terdaftar Admin</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="Contoh: dicoba.ngetes@gmail.com"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full px-3.5 py-3 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Default admin: <span className="font-mono text-slate-600">dicoba.ngetes@gmail.com</span>
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 px-4 rounded-2xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs transition-colors shadow-md shadow-blue-900/20 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <span>Kirim Kode Verifikasi (OTP)</span>
-                  <ArrowRight className="w-4 h-4" />
+                  Simpan Perubahan Profil
                 </button>
 
                 <div className="text-center pt-1">
@@ -474,113 +407,53 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     }}
                     className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
                   >
-                    Batal & Kembali ke Login
+                    Kembali ke Login
                   </button>
                 </div>
               </form>
             )}
 
-            {/* 4. LUPA PASSWORD - STEP 2 (INPUT OTP + NEW PIN) */}
-            {adminStep === 'FORGOT_STEP_2' && (
-              <form onSubmit={handleVerifyOtpAndReset} className="space-y-3.5">
-                <div className="text-center mb-1">
-                  <h3 className="text-base font-bold text-slate-900">Masukkan OTP & Buat PIN Baru</h3>
-                  <p className="text-xs text-slate-500">
-                    Langkah 2: Verifikasi 6-digit OTP yang dikirimkan
+            {/* 3. KONFIRMASI RESET DATA TOTAL */}
+            {adminStep === 'RESET_DATA_CONFIRM' && (
+              <div className="space-y-4 py-2 text-center">
+                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto border border-rose-100">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Reset Data Total?</h3>
+                  <p className="text-xs text-slate-500 mt-1 px-4 leading-relaxed">
+                    Tindakan ini akan menghapus seluruh data transaksi, daftar pelanggan, dan pengaturan yang tersimpan secara permanen.
                   </p>
                 </div>
 
-                {otpSentNotification && (
-                  <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-[11px] flex items-center justify-between">
-                    <span>{otpSentNotification}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newCode = generateOTP();
-                        setGeneratedOtp(newCode);
-                        setSuccessMessage(`Kode baru dikirim: ${newCode}`);
-                      }}
-                      className="text-blue-900 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Kirim Ulang
-                    </button>
-                  </div>
-                )}
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmResetAll}
+                    className="w-full py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shadow-md shadow-rose-600/20 cursor-pointer"
+                  >
+                    Ya, Hapus dan Reset Semua Data
+                  </button>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Kode OTP 6-Digit *
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    required
-                    placeholder="Masukkan 6 Digit OTP"
-                    value={inputOtp}
-                    onChange={(e) => setInputOtp(e.target.value.replace(/\D/g, ''))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-center text-base tracking-widest text-slate-900 outline-none focus:border-blue-700"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      PIN Baru (6 Digit) *
-                    </label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      required
-                      placeholder="PIN Baru"
-                      value={newPin}
-                      onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-center text-xs tracking-widest text-slate-900 outline-none focus:border-blue-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Konfirmasi PIN Baru *
-                    </label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      required
-                      placeholder="Ulangi PIN"
-                      value={newPinConfirm}
-                      onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ''))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-center text-xs tracking-widest text-slate-900 outline-none focus:border-blue-700"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 px-4 rounded-2xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs transition-colors shadow-md shadow-blue-900/20 cursor-pointer"
-                >
-                  Reset PIN & Simpan
-                </button>
-
-                <div className="text-center pt-1">
                   <button
                     type="button"
                     onClick={() => {
                       setAdminStep('LOGIN');
                       clearMessages();
                     }}
-                    className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                    className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
                   >
                     Batal
                   </button>
                 </div>
-              </form>
+              </div>
             )}
 
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* B. PORTAL PELANGGAN / NASABAH (BERSIH & ZERO-LEAKAGE) */}
+        {/* B. PORTAL PELANGGAN / NASABAH */}
         {/* ============================================================ */}
         {portalMode === 'CUSTOMER' && (
           <div className="p-6">
