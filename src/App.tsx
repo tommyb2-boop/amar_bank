@@ -48,7 +48,6 @@ export default function App() {
         const data = snapshot.docs.map(doc => doc.data() as AdminUser);
         setAdmins(data);
       } else {
-        // Jika koleksi admin di cloud masih kosong, masukkan data awal
         INITIAL_ADMINS.forEach(async (adm) => {
           await setDoc(doc(db, "admins", adm.id), adm);
         });
@@ -56,8 +55,8 @@ export default function App() {
     });
 
     const unsubCustomers = onSnapshot(collection(db, "customers"), (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Customer);
-      if (data.length > 0) {
+      if (!snapshot.empty) {
+        const data = snapshot.docs.map(doc => doc.data() as Customer);
         setCustomers(data);
       } else {
         INITIAL_CUSTOMERS.forEach(async (c) => {
@@ -67,8 +66,8 @@ export default function App() {
     });
 
     const unsubLoans = onSnapshot(collection(db, "loans"), (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Loan);
-      if (data.length > 0) {
+      if (!snapshot.empty) {
+        const data = snapshot.docs.map(doc => doc.data() as Loan);
         setLoans(data);
       } else {
         INITIAL_LOANS.forEach(async (l) => {
@@ -78,8 +77,8 @@ export default function App() {
     });
 
     const unsubPayments = onSnapshot(collection(db, "payments"), (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Payment);
-      if (data.length > 0) {
+      if (!snapshot.empty) {
+        const data = snapshot.docs.map(doc => doc.data() as Payment);
         setPayments(data);
       } else {
         INITIAL_PAYMENTS.forEach(async (p) => {
@@ -89,8 +88,8 @@ export default function App() {
     });
 
     const unsubNotifs = onSnapshot(collection(db, "notifications"), (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as NotificationItem);
-      if (data.length > 0) {
+      if (!snapshot.empty) {
+        const data = snapshot.docs.map(doc => doc.data() as NotificationItem);
         setNotifications(data);
       } else {
         INITIAL_NOTIFICATIONS.forEach(async (n) => {
