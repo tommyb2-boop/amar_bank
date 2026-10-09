@@ -190,6 +190,32 @@ export default function App() {
     );
   };
 
+  // Handler untuk memperbarui Profil & Password Admin dari menu pengaturan
+  const handleUpdateAdminProfile = (updatedAdmin: AdminUser) => {
+    setAdmins((prev) =>
+      prev.map((a) => (a.id === updatedAdmin.id ? updatedAdmin : a))
+    );
+    setCurrentUser((prev) => ({
+      ...prev,
+      adminData: updatedAdmin,
+    }));
+  };
+
+  // Handler untuk Reset Data Total (Menghapus seluruh database dan localStorage)
+  const handleResetAllData = () => {
+    setCustomers([]);
+    setLoans([]);
+    setPayments([]);
+    setNotifications([]);
+    
+    localStorage.removeItem(STORAGE_KEY_CUSTOMERS);
+    localStorage.removeItem(STORAGE_KEY_LOANS);
+    localStorage.removeItem(STORAGE_KEY_PAYMENTS);
+    localStorage.removeItem(STORAGE_KEY_NOTIFS);
+
+    alert('Semua data sistem berhasil di-reset total.');
+  };
+
   const handleLogout = () => {
     setCurrentUser({ role: null });
   };
@@ -322,6 +348,8 @@ export default function App() {
             onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
             onClearAllNotifications={handleClearAllNotifications}
             onLogout={handleLogout}
+            onUpdateAdminProfile={handleUpdateAdminProfile}
+            onResetAllData={handleResetAllData}
           />
         )}
 
