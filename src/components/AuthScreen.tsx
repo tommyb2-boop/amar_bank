@@ -42,20 +42,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-      // 1. Handle Admin Login
+  // 1. Handle Admin Login dengan Email & PIN
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
+    const emailToMatch = adminEmail.trim().toLowerCase();
     const pinToMatch = adminPin.trim();
-    // Gunakan props admins, jika kosong gunakan INITIAL_ADMINS sebagai cadangan
+
     const adminList = admins && admins.length > 0 ? admins : INITIAL_ADMINS;
-    const admin = adminList.find((a) => a.pin === pinToMatch);
+    
+    // Mencocokkan email dan PIN admin
+    const admin = adminList.find(
+      (a) => a.email.toLowerCase() === emailToMatch && a.pin === pinToMatch
+    );
 
     if (admin) {
-      onAdminLogin(admin); // Meneruskan objek admin yang valid ke App.tsx
+      onAdminLogin(admin);
     } else {
-      setErrorMessage('PIN Admin salah. Masukkan 6 digit PIN (123456).');
+      setErrorMessage('Email atau PIN Admin tidak valid. Periksa kembali data Anda.');
     }
   };
 
