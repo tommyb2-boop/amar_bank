@@ -25,8 +25,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [portalMode, setPortalMode] = useState<PortalMode>('ADMIN');
   const [adminStep] = useState<AdminAuthStep>('LOGIN');
 
-  // Admin login states
+    // Admin login states
   const [adminPin, setAdminPin] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
 
   // Customer login states
   const [customerIdentifier, setCustomerIdentifier] = useState('');
