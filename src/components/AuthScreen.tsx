@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { AdminUser, Customer } from '../types';
 import { AmarBankLogo } from './AmarBankLogo';
 import { Lock, KeyRound, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { INITIAL_ADMINS } from '../data/initialData';
 
 interface AuthScreenProps {
   admins: AdminUser[];
   customers: Customer[];
   onAdminLogin: (admin: AdminUser) => void;
   onCustomerLogin: (customer: Customer) => void;
-  onRegisterAdmin: (newAdmin: AdminUser) => void;
-  onResetAdminPin: (email: string, newPin: string) => void;
+  onRegisterAdmin?: (newAdmin: AdminUser) => void;
+  onResetAdminPin?: (email: string, newPin: string) => void;
 }
 
 type PortalMode = 'ADMIN' | 'CUSTOMER';
@@ -26,7 +27,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
   // Admin login states
   const [adminPin, setAdminPin] = useState('');
-  const [adminEmail] = useState('');
 
   // Customer login states
   const [customerIdentifier, setCustomerIdentifier] = useState('');
@@ -41,23 +41,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-      // 1. Handle Admin Login (Diperbaiki agar mengembalikan objek admin yang valid)
+  // 1. Handle Admin Login
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
     const pinToMatch = adminPin.trim();
-    // Cari objek admin di dalam array 'admins' yang PIN-nya cocok
-    const admin = admins.find((a) => a.pin === pinToMatch);
+    // Gunakan props admins, jika kosong gunakan INITIAL_ADMINS sebagai cadangan
+    const adminList = admins && admins.length > 0 ? admins : INITIAL_ADMINS;
+    const admin = adminList.find((a) => a.pin === pinToMatch);
 
     if (admin) {
-      onAdminLogin(admin); // Mengirim objek admin utuh (ADM-001, dll)
+      onAdminLogin(admin);
     } else {
-      setErrorMessage('PIN Admin tidak valid. Periksa kembali PIN Anda.');
+      setErrorMessage('PIN Admin tidak valid. Gunakan PIN default: 123456');
     }
   };
 
-  // 2. Handle Customer Login (Clean & Secure - Zero Leakage)
+  // 2. Handle Customer Login
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
