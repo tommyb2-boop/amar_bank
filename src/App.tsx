@@ -13,62 +13,19 @@ import { CustomerPortal } from './components/CustomerPortal';
 import { Watermark } from './components/Watermark';
 import { getDaysDifference } from './utils/formatters';
 import { Smartphone, Monitor } from 'lucide-react';
+import { db } from './firebase';
+import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
-const STORAGE_KEY_ADMINS = 'amar_bank_admins_v1';
-const STORAGE_KEY_CUSTOMERS = 'amar_bank_customers_v1';
-const STORAGE_KEY_LOANS = 'amar_bank_loans_v1';
-const STORAGE_KEY_PAYMENTS = 'amar_bank_payments_v1';
-const STORAGE_KEY_NOTIFS = 'amar_bank_notifs_v1';
 const STORAGE_KEY_SESSION = 'amar_bank_session_v1';
 
 export default function App() {
-  // State initialization with localStorage fallback
-  const [admins, setAdmins] = useState<AdminUser[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_ADMINS);
-      return saved ? JSON.parse(saved) : INITIAL_ADMINS;
-    } catch {
-      return INITIAL_ADMINS;
-    }
-  });
+  const [admins, setAdmins] = useState<AdminUser[]>(INITIAL_ADMINS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CUSTOMERS);
-      return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
-    } catch {
-      return INITIAL_CUSTOMERS;
-    }
-  });
-
-  const [loans, setLoans] = useState<Loan[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_LOANS);
-      return saved ? JSON.parse(saved) : INITIAL_LOANS;
-    } catch {
-      return INITIAL_LOANS;
-    }
-  });
-
-  const [payments, setPayments] = useState<Payment[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_PAYMENTS);
-      return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
-    } catch {
-      return INITIAL_PAYMENTS;
-    }
-  });
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_NOTIFS);
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
-  });
-
-  // Current Auth Session
+  // Current Auth Session (tetap menggunakan localStorage untuk sesi login perangkat)
   const [currentUser, setCurrentUser] = useState<{
     role: 'ADMIN' | 'CUSTOMER' | null;
     adminData?: AdminUser;
@@ -76,57 +33,80 @@ export default function App() {
   }>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SESSION);
-      // Jika ada data sesi di localStorage, gunakan (otomatis login)
-      // Jika tidak ada (perangkat baru / belum pernah login), set role ke null (muncul halaman login)
       return saved ? JSON.parse(saved) : { role: null };
     } catch {
       return { role: null };
     }
   });
 
-  // Optional Phone Simulation Frame Toggle (desktop view)
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
 
-  // Sync to localStorage
+  // Sinkronisasi Real-Time dari Firebase Firestore
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(admins));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [admins]);
+    const unsubAdmins = onSnapshot(collection(db, "admins"), (snapshot) => {
+      if (!snapshot.empty) {
+        const data = snapshot.docs.map(doc => doc.data() as AdminUser);
+        setAdmins(data);
+      } else {
+        // Jika koleksi admin di cloud masih kosong, masukkan data awal
+        INITIAL_ADMINS.forEach(async (adm) => {
+          await setDoc(doc(db, "admins", adm.id), adm);
+        });
+      }
+    });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_CUSTOMERS, JSON.stringify(customers));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [customers]);
+    const unsubCustomers = onSnapshot(collection(db, "customers"), (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as Customer);
+      if (data.length > 0) {
+        setCustomers(data);
+      } else {
+        INITIAL_CUSTOMERS.forEach(async (c) => {
+          await setDoc(doc(db, "customers", c.id), c);
+        });
+      }
+    });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_LOANS, JSON.stringify(loans));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [loans]);
+    const unsubLoans = onSnapshot(collection(db, "loans"), (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as Loan);
+      if (data.length > 0) {
+        setLoans(data);
+      } else {
+        INITIAL_LOANS.forEach(async (l) => {
+          await setDoc(doc(db, "loans", l.id), l);
+        });
+      }
+    });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_PAYMENTS, JSON.stringify(payments));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [payments]);
+    const unsubPayments = onSnapshot(collection(db, "payments"), (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as Payment);
+      if (data.length > 0) {
+        setPayments(data);
+      } else {
+        INITIAL_PAYMENTS.forEach(async (p) => {
+          await setDoc(doc(db, "payments", p.id), p);
+        });
+      }
+    });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(notifications));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [notifications]);
+    const unsubNotifs = onSnapshot(collection(db, "notifications"), (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as NotificationItem);
+      if (data.length > 0) {
+        setNotifications(data);
+      } else {
+        INITIAL_NOTIFICATIONS.forEach(async (n) => {
+          await setDoc(doc(db, "notifications", n.id), n);
+        });
+      }
+    });
+
+    return () => {
+      unsubAdmins();
+      unsubCustomers();
+      unsubLoans();
+      unsubPayments();
+      unsubNotifs();
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -138,34 +118,23 @@ export default function App() {
 
   // Automatic Due-Date Check (≤ 3 days detection for notifications)
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    loans.forEach(async (loan) => {
+      if (loan.remainingBalance <= 0 && loan.status !== 'LUNAS') {
+        const updated = { ...loan, status: 'LUNAS' as const };
+        await setDoc(doc(db, "loans", loan.id), updated);
+        return;
+      }
 
-    setLoans((prevLoans) => {
-      let hasChanges = false;
-      const updatedLoans = prevLoans.map((loan) => {
-        if (loan.remainingBalance <= 0) {
-          if (loan.status !== 'LUNAS') {
-            hasChanges = true;
-            return { ...loan, status: 'LUNAS' as const };
-          }
-          return loan;
-        }
-
-        const daysDiff = getDaysDifference(loan.nextDueDate);
-        if (daysDiff < 0 && loan.status !== 'MENUNGGAK') {
-          hasChanges = true;
-          return { ...loan, status: 'MENUNGGAK' as const };
-        } else if (daysDiff >= 0 && daysDiff <= 3 && loan.status !== 'PERHATIAN') {
-          hasChanges = true;
-          return { ...loan, status: 'PERHATIAN' as const };
-        }
-        return loan;
-      });
-
-      return hasChanges ? updatedLoans : prevLoans;
+      const daysDiff = getDaysDifference(loan.nextDueDate);
+      if (daysDiff < 0 && loan.status !== 'MENUNGGAK') {
+        const updated = { ...loan, status: 'MENUNGGAK' as const };
+        await setDoc(doc(db, "loans", loan.id), updated);
+      } else if (daysDiff >= 0 && daysDiff <= 3 && loan.status !== 'PERHATIAN') {
+        const updated = { ...loan, status: 'PERHATIAN' as const };
+        await setDoc(doc(db, "loans", loan.id), updated);
+      }
     });
-  }, []);
+  }, [loans]);
 
   // Handlers
   const handleAdminLogin = (admin: AdminUser) => {
@@ -182,41 +151,39 @@ export default function App() {
     });
   };
 
-  const handleRegisterAdmin = (newAdmin: AdminUser) => {
-    setAdmins((prev) => [...prev, newAdmin]);
+  const handleRegisterAdmin = async (newAdmin: AdminUser) => {
+    await setDoc(doc(db, "admins", newAdmin.id), newAdmin);
   };
 
-  const handleResetAdminPin = (email: string, newPin: string) => {
-    setAdmins((prev) =>
-      prev.map((a) => (a.email.toLowerCase() === email.toLowerCase() ? { ...a, pin: newPin } : a))
-    );
+  const handleResetAdminPin = async (email: string, newPin: string) => {
+    const targetAdmin = admins.find(a => a.email.toLowerCase() === email.toLowerCase());
+    if (targetAdmin) {
+      const updated = { ...targetAdmin, pin: newPin };
+      await setDoc(doc(db, "admins", targetAdmin.id), updated);
+    }
   };
 
-  const handleUpdateAdminProfile = (updatedAdmin: AdminUser) => {
-    setAdmins((prev) =>
-      prev.map((a) => (a.id === updatedAdmin.id ? updatedAdmin : a))
-    );
+  const handleUpdateAdminProfile = async (updatedAdmin: AdminUser) => {
+    await setDoc(doc(db, "admins", updatedAdmin.id), updatedAdmin);
     setCurrentUser((prev) => ({
       ...prev,
       adminData: updatedAdmin,
     }));
   };
 
-  const handleResetAllData = () => {
-    setCustomers([]);
-    setLoans([]);
-    setPayments([]);
-    setNotifications([]);
-    
-    localStorage.removeItem(STORAGE_KEY_CUSTOMERS);
-    localStorage.removeItem(STORAGE_KEY_LOANS);
-    localStorage.removeItem(STORAGE_KEY_PAYMENTS);
-    localStorage.removeItem(STORAGE_KEY_NOTIFS);
-
-    alert('Semua data sistem berhasil di-reset total.');
+  const handleResetAllData = async () => {
+    try {
+      for (const c of customers) await deleteDoc(doc(db, "customers", c.id));
+      for (const l of loans) await deleteDoc(doc(db, "loans", l.id));
+      for (const p of payments) await deleteDoc(doc(db, "payments", p.id));
+      for (const n of notifications) await deleteDoc(doc(db, "notifications", n.id));
+      alert('Semua data sistem di Cloud Database berhasil di-reset total.');
+    } catch (e) {
+      console.error(e);
+      alert('Gagal mereset data.');
+    }
   };
 
-  // Fungsi Backup Lokal (Download file JSON)
   const handleLocalBackup = () => {
     const backupData = {
       admins,
@@ -236,22 +203,25 @@ export default function App() {
     downloadAnchor.remove();
   };
 
-  // Fungsi Restore Lokal (Import dari file JSON)
   const handleLocalRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileReader = new FileReader();
     if (e.target.files && e.target.files[0]) {
       fileReader.readAsText(e.target.files[0], "UTF-8");
-      fileReader.onload = (event) => {
+      fileReader.onload = async (event) => {
         try {
           const parsedData = JSON.parse(event.target?.result as string);
           if (parsedData && parsedData.customers && parsedData.loans) {
-            if (window.confirm("Apakah Anda yakin ingin memulihkan data dari file ini? Data saat ini akan ditimpa.")) {
-              if (parsedData.admins) setAdmins(parsedData.admins);
-              if (parsedData.customers) setCustomers(parsedData.customers);
-              if (parsedData.loans) setLoans(parsedData.loans);
-              if (parsedData.payments) setPayments(parsedData.payments);
-              if (parsedData.notifications) setNotifications(parsedData.notifications);
-              alert("Data berhasil dipulihkan dari file lokal!");
+            if (window.confirm("Pulihkan data ke Cloud Database? Data saat ini akan ditimpa.")) {
+              if (parsedData.customers) {
+                for (const c of parsedData.customers) await setDoc(doc(db, "customers", c.id), c);
+              }
+              if (parsedData.loans) {
+                for (const l of parsedData.loans) await setDoc(doc(db, "loans", l.id), l);
+              }
+              if (parsedData.payments) {
+                for (const p of parsedData.payments) await setDoc(doc(db, "payments", p.id), p);
+              }
+              alert("Data berhasil dipulihkan ke Cloud Database!");
             }
           } else {
             alert("Format file cadangan tidak valid.");
@@ -267,32 +237,26 @@ export default function App() {
     setCurrentUser({ role: null });
   };
 
-  const handleAddCustomer = (customer: Customer) => {
-    setCustomers((prev) => [customer, ...prev]);
+  const handleAddCustomer = async (customer: Customer) => {
+    await setDoc(doc(db, "customers", customer.id), customer);
   };
 
-  const handleUpdateCustomer = (updatedCust: Customer) => {
-    setCustomers((prev) =>
-      prev.map((c) => (c.id === updatedCust.id ? updatedCust : c))
-    );
-    setLoans((prev) =>
-      prev.map((l) =>
-        l.customerId === updatedCust.id
-          ? { ...l, customerName: updatedCust.fullName, customerPhone: updatedCust.phone }
-          : l
-      )
-    );
+  const handleUpdateCustomer = async (updatedCust: Customer) => {
+    await setDoc(doc(db, "customers", updatedCust.id), updatedCust);
+    const relatedLoans = loans.filter(l => l.customerId === updatedCust.id);
+    for (const l of relatedLoans) {
+      const updatedLoan = { ...l, customerName: updatedCust.fullName, customerPhone: updatedCust.phone };
+      await setDoc(doc(db, "loans", l.id), updatedLoan);
+    }
   };
 
-  const handleAddLoan = (loan: Loan) => {
-    setLoans((prev) => [loan, ...prev]);
+  const handleAddLoan = async (loan: Loan) => {
+    await setDoc(doc(db, "loans", loan.id), loan);
   };
 
-  const handleRecordPayment = (payment: Payment, updatedLoan: Loan) => {
-    setPayments((prev) => [payment, ...prev]);
-    setLoans((prev) =>
-      prev.map((l) => (l.id === updatedLoan.id ? updatedLoan : l))
-    );
+  const handleRecordPayment = async (payment: Payment, updatedLoan: Loan) => {
+    await setDoc(doc(db, "payments", payment.id), payment);
+    await setDoc(doc(db, "loans", updatedLoan.id), updatedLoan);
 
     const newNotif: NotificationItem = {
       id: `NOTIF-${Date.now()}`,
@@ -304,28 +268,31 @@ export default function App() {
       date: new Date().toISOString(),
       isRead: false,
     };
-    setNotifications((prev) => [newNotif, ...prev]);
+    await setDoc(doc(db, "notifications", newNotif.id), newNotif);
   };
 
-  const handleMarkNotificationAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const handleMarkNotificationAsRead = async (id: string) => {
+    const target = notifications.find(n => n.id === id);
+    if (target) {
+      await setDoc(doc(db, "notifications", id), { ...target, isRead: true });
+    }
   };
 
-  const handleMarkAllNotificationsAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const handleMarkAllNotificationsAsRead = async () => {
+    for (const n of notifications) {
+      await setDoc(doc(db, "notifications", n.id), { ...n, isRead: true });
+    }
   };
 
-  const handleClearAllNotifications = () => {
-    setNotifications([]);
+  const handleClearAllNotifications = async () => {
+    for (const n of notifications) {
+      await deleteDoc(doc(db, "notifications", n.id));
+    }
   };
 
-  // Render view
   return (
     <div className={`min-h-screen ${isPhoneFrame ? 'bg-slate-900 py-6 px-4 flex items-center justify-center' : 'bg-slate-100'} relative`}>
       
-      {/* Device Frame View Switcher */}
       <div className="fixed top-3 right-3 z-50 no-print hidden md:flex items-center gap-1.5 p-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white border border-white/20 shadow-md">
         <button
           onClick={() => setIsPhoneFrame(false)}
@@ -349,7 +316,6 @@ export default function App() {
         </button>
       </div>
 
-      {/* Frame Container */}
       <div
         className={`w-full transition-all duration-300 ${
           isPhoneFrame
@@ -364,7 +330,6 @@ export default function App() {
           </div>
         )}
 
-        {/* 1. If not logged in -> Show AuthScreen */}
         {!currentUser.role && (
           <AuthScreen
             admins={admins}
@@ -376,7 +341,6 @@ export default function App() {
           />
         )}
 
-        {/* 2. If logged in as ADMIN -> Show AdminPortal */}
         {currentUser.role === 'ADMIN' && currentUser.adminData && (
           <AdminPortal
             currentAdmin={currentUser.adminData}
@@ -399,7 +363,6 @@ export default function App() {
           />
         )}
 
-        {/* 3. If logged in as CUSTOMER -> Show CustomerPortal */}
         {currentUser.role === 'CUSTOMER' && currentUser.customerData && (
           <CustomerPortal
             currentCustomer={currentUser.customerData}
