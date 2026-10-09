@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Receipt,
   Download,
+  Upload,
   Mail,
   Home,
   Settings,
@@ -48,6 +49,8 @@ interface AdminPortalProps {
   onLogout: () => void;
   onUpdateAdminProfile?: (updatedAdmin: AdminUser) => void;
   onResetAllData?: () => void;
+  onLocalBackup?: () => void;
+  onLocalRestore?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 type TabType = 'BERANDA' | 'NASABAH' | 'KREDIT' | 'PEMBAYARAN' | 'LAPORAN';
@@ -68,6 +71,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onLogout,
   onUpdateAdminProfile,
   onResetAllData,
+  onLocalBackup,
+  onLocalRestore,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('BERANDA');
 
@@ -1042,6 +1047,44 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                   <Mail className="w-4 h-4" />
                   <span>Kirim ke Email (dicoba.ngetes@gmail.com)</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Tombol Backup & Restore Lokal (JSON) */}
+            <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <span className="text-[10px] font-bold tracking-wider text-purple-800 bg-purple-50 px-2 py-0.5 rounded">
+                BACKUP & RESTORE LOKAL (JSON)
+              </span>
+              <h3 className="text-sm font-bold text-slate-900 mt-1">
+                Cadangkan & Pulihkan Database Perangkat
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Simpan file cadangan database ke penyimpanan lokal perangkat Anda atau impor file cadangan untuk memulihkan data sebelumnya.
+              </p>
+
+              <div className="pt-2 flex flex-wrap gap-2.5 items-center">
+                {onLocalBackup && (
+                  <button
+                    onClick={onLocalBackup}
+                    className="py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Backup Lokal (.json)</span>
+                  </button>
+                )}
+
+                {onLocalRestore && (
+                  <label className="py-2.5 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    <span>Restore dari File (.json)</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={onLocalRestore}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
             </div>
           </div>
