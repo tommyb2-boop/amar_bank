@@ -68,7 +68,7 @@ export default function App() {
     }
   });
 
-    // Current Auth Session (Pastikan fallback awal langsung meload ADMIN pertama agar tidak null)
+      // Current Auth Session (Set awal ke null agar wajib ke halaman login)
   const [currentUser, setCurrentUser] = useState<{
     role: 'ADMIN' | 'CUSTOMER' | null;
     adminData?: AdminUser;
@@ -76,11 +76,12 @@ export default function App() {
   }>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SESSION);
-      return saved ? JSON.parse(saved) : { role: 'ADMIN', adminData: INITIAL_ADMINS[0] };
+      return saved ? JSON.parse(saved) : { role: null };
     } catch {
-      return { role: 'ADMIN', adminData: INITIAL_ADMINS[0] };
+      return { role: null };
     }
   });
+
 
   // Optional Phone Simulation Frame Toggle (desktop view)
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
