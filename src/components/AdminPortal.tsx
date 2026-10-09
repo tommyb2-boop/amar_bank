@@ -25,12 +25,11 @@ import {
   Download,
   Mail,
   Home,
-  CheckCircle2,
-  Share2,
-  Calendar,
-  Layers,
-  ChevronRight,
-  UserCheck
+  Settings,
+  Trash2,
+  User,
+  KeyRound,
+  CheckCircle2
 } from 'lucide-react';
 
 interface AdminPortalProps {
@@ -47,6 +46,8 @@ interface AdminPortalProps {
   onMarkAllNotificationsAsRead: () => void;
   onClearAllNotifications: () => void;
   onLogout: () => void;
+  onUpdateAdminProfile?: (updatedAdmin: AdminUser) => void;
+  onResetAllData?: () => void;
 }
 
 type TabType = 'BERANDA' | 'NASABAH' | 'KREDIT' | 'PEMBAYARAN' | 'LAPORAN';
@@ -65,6 +66,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onMarkAllNotificationsAsRead,
   onClearAllNotifications,
   onLogout,
+  onUpdateAdminProfile,
+  onResetAllData,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('BERANDA');
 
@@ -76,6 +79,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [selectedReceipt, setSelectedReceipt] = useState<Payment | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  
+  // New States for Settings & Reset Modals
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  // Admin Profile Settings Form States
+  const [editFullName, setEditFullName] = useState(currentAdmin.fullName);
+  const [editEmail, setEditEmail] = useState(currentAdmin.email);
+  const [editPhone, setEditPhone] = useState(currentAdmin.phone);
+  const [oldPin, setOldPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [newPinConfirm, setNewPinConfirm] = useState('');
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [settingsError, setSettingsError] = useState('');
+
   const [preselectedCustomerId, setPreselectedCustomerId] = useState<string | undefined>(undefined);
   const [preselectedLoanId, setPreselectedLoanId] = useState<string | undefined>(undefined);
 
@@ -114,7 +132,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       const activeCustLoans = custLoans.filter((l) => l.remainingBalance > 0);
       const totalSisa = custLoans.reduce((sum, l) => sum + l.remainingBalance, 0);
 
-      // Determine payment smoothness status
       let smoothness: LoanStatus = 'LANCAR';
       if (custLoans.some((l) => l.status === 'MENUNGGAK')) {
         smoothness = 'MENUNGGAK';
@@ -134,7 +151,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     });
   }, [customers, loans]);
 
-  // Filtered customer list
   const filteredCustomers = useMemo(() => {
     if (!customerSearch.trim()) return enrichedCustomers;
     const q = customerSearch.toLowerCase();
@@ -147,7 +163,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     );
   }, [enrichedCustomers, customerSearch]);
 
-  // Filtered loan list
   const filteredLoans = useMemo(() => {
     return loans.filter((l) => {
       const matchSearch =
@@ -164,7 +179,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     });
   }, [loans, loanSearch, loanStatusFilter]);
 
-  // Filtered payment list
   const filteredPayments = useMemo(() => {
     if (!paymentSearch.trim()) return payments;
     const q = paymentSearch.toLowerCase();
@@ -177,6 +191,52 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     );
   }, [payments, paymentSearch]);
 
+  // Handle Admin Profile & Password Update
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsError('');
+    setSettingsMessage('');
+
+    if (!editFullName.trim() || !editEmail.trim() || !editPhone.trim()) {
+      setSettingsError('Harap lengkapi semua kolom profil.');
+      return;
+    }
+
+    let updatedPin = currentAdmin.pin;
+
+    if (oldPin || newPin || newPinConfirm) {
+      if (oldPin !== currentAdmin.pin) {
+        setSettingsError('PIN lama tidak sesuai.');
+        return;
+      }
+      if (newPin.length < 6) {
+        setSettingsError('PIN baru minimal harus 6 digit angka.');
+        return;
+      }
+      if (newPin !== newPinConfirm) {
+        setSettingsError('Konfirmasi PIN baru tidak cocok.');
+        return;
+      }
+      updatedPin = newPin.trim();
+    }
+
+    const updatedAdminData: AdminUser = {
+      ...currentAdmin,
+      fullName: editFullName.trim(),
+      email: editEmail.trim(),
+      phone: editPhone.trim(),
+      pin: updatedPin,
+    };
+
+    if (onUpdateAdminProfile) {
+      onUpdateAdminProfile(updatedAdminData);
+    }
+    setSettingsMessage('Pengaturan profil dan password berhasil diperbarui!');
+    setOldPin('');
+    setNewPin('');
+    setNewPinConfirm('');
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 pb-24 text-slate-800">
       
@@ -186,7 +246,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           <AmarBankLogo size="sm" showText={true} />
 
           <div className="flex items-center gap-2">
-            {/* Notification Bell with Badge */}
+            {/* Notification Bell */}
             <button
               onClick={() => setIsNotificationModalOpen(true)}
               className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
@@ -198,6 +258,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   {unreadNotifCount}
                 </span>
               )}
+            </button>
+
+            {/* Tombol Pengaturan Profil & Password */}
+            <button
+              onClick={() => {
+                setEditFullName(currentAdmin.fullName);
+                setEditEmail(currentAdmin.email);
+                setEditPhone(currentAdmin.phone);
+                setSettingsError('');
+                setSettingsMessage('');
+                setIsSettingsModalOpen(true);
+              }}
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+              title="Pengaturan Profil & Password"
+            >
+              <Settings className="w-4 h-4 text-blue-900" />
+              <span className="text-xs font-semibold hidden sm:inline">Pengaturan</span>
+            </button>
+
+            {/* Tombol Reset Data Total */}
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer flex items-center gap-1"
+              title="Reset Data Total"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span className="text-xs font-semibold hidden sm:inline">Reset Total</span>
             </button>
 
             {/* Admin Profile & Logout */}
@@ -226,13 +313,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* 2. MAIN APP CONTENT CONTAINER */}
       <main className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
         
-        {/* ========================================================= */}
-        {/* TAB 1: BERANDA (OVERVIEW DASHBOARD) */}
-        {/* ========================================================= */}
+        {/* TAB 1: BERANDA */}
         {activeTab === 'BERANDA' && (
           <div className="space-y-4">
-            
-            {/* Welcome Banner */}
             <div className="p-5 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-800 rounded-3xl text-white shadow-xl shadow-blue-950/15 relative overflow-hidden">
               <div className="relative z-10">
                 <span className="text-[11px] font-semibold text-blue-200 uppercase tracking-wider">
@@ -245,7 +328,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   Kelola pencatatan kredit, piutang nasabah, angsuran berjalan, dan ekspor laporan resmi.
                 </p>
 
-                {/* Quick Action Buttons */}
                 <div className="mt-4 flex flex-wrap gap-2 pt-1">
                   <button
                     onClick={() => {
@@ -283,9 +365,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             </div>
 
-            {/* Financial Metrics Cards (3-Column / 2-Column Responsive) */}
+            {/* Financial Metrics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* Card 1: Total Piutang */}
               <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                   Total Plafon Piutang
@@ -298,7 +379,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </span>
               </div>
 
-              {/* Card 2: Terkumpul */}
               <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
                   Total Angsuran Masuk
@@ -311,7 +391,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </span>
               </div>
 
-              {/* Card 3: Sisa Piutang Berjalan */}
               <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[11px] font-semibold text-blue-900 uppercase tracking-wider block">
                   Sisa Piutang Aktif
@@ -324,7 +403,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </span>
               </div>
 
-              {/* Card 4: Total Nasabah */}
               <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                   Total Nasabah
@@ -347,7 +425,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             </div>
 
-            {/* Quick Alert Bar if any due in <= 3 days */}
             {financialStats.attentionCount > 0 && (
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -365,10 +442,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             )}
 
-            {/* Dua Kolom Beranda: Akad Terbaru & Riwayat Pembayaran Terbaru */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* Kolom 1: Akad Kredit Aktif Terbaru */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
@@ -416,7 +490,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
               </div>
 
-              {/* Kolom 2: Transaksi Pembayaran Masuk Terbaru */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
@@ -461,19 +534,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   ))}
                 </div>
               </div>
-
             </div>
-
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* TAB 2: MANAJEMEN NASABAH & PELANGGAN */}
-        {/* ========================================================= */}
+        {/* TAB 2: NASABAH */}
         {activeTab === 'NASABAH' && (
           <div className="space-y-4">
-            
-            {/* Header and Search */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
@@ -497,7 +564,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </button>
             </div>
 
-            {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
@@ -509,7 +575,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               />
             </div>
 
-            {/* Customer Cards List */}
             <div className="space-y-3">
               {filteredCustomers.length === 0 ? (
                 <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center text-slate-400">
@@ -553,7 +618,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                           </p>
                         </div>
 
-                        {/* Customer PIN Display (Protected View for Admin) */}
                         <div className="text-right">
                           <span className="text-[10px] text-slate-400 block">PIN Nasabah:</span>
                           <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
@@ -562,7 +626,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                         </div>
                       </div>
 
-                      {/* Financial Metric Row */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
                         <div>
                           <span className="text-slate-400 text-[11px]">Pinjaman Aktif:</span>
@@ -584,9 +647,7 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                         </div>
                       </div>
 
-                      {/* Action Buttons: WhatsApp & Edit */}
                       <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                        {/* WhatsApp Direct Chat Button */}
                         <a
                           href={waChatLink}
                           target="_blank"
@@ -597,7 +658,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                           <span>Hubungi WhatsApp</span>
                         </a>
 
-                        {/* Tambah Kredit untuk nasabah ini */}
                         <button
                           onClick={() => {
                             setPreselectedCustomerId(c.id);
@@ -608,7 +668,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                           + Akad Baru
                         </button>
 
-                        {/* Edit Data */}
                         <button
                           onClick={() => {
                             setCustomerToEdit(c);
@@ -624,17 +683,12 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                 })
               )}
             </div>
-
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* TAB 3: AKAD KREDIT & PIUTANG */}
-        {/* ========================================================= */}
+        {/* TAB 3: KREDIT */}
         {activeTab === 'KREDIT' && (
           <div className="space-y-4">
-            
-            {/* Header and Add Button */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
@@ -658,7 +712,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               </button>
             </div>
 
-            {/* Filter Pills */}
             <div className="flex flex-wrap gap-1.5 text-xs">
               {[
                 { id: 'ALL', label: 'Semua Status' },
@@ -681,7 +734,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               ))}
             </div>
 
-            {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
@@ -693,7 +745,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               />
             </div>
 
-            {/* Loan Cards List */}
             <div className="space-y-3">
               {filteredLoans.length === 0 ? (
                 <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center text-slate-400">
@@ -744,7 +795,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                         </span>
                       </div>
 
-                      {/* Progress Bar */}
                       <div>
                         <div className="flex justify-between text-[11px] mb-1 font-medium text-slate-600">
                           <span>Pelunasan ({percentPaid}%)</span>
@@ -762,7 +812,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                         </div>
                       </div>
 
-                      {/* Detail Metrics */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-xs">
                         <div>
                           <span className="text-[10px] text-slate-400">Pokok Bersih:</span>
@@ -791,7 +840,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                         </div>
                       </div>
 
-                      {/* Action Bar */}
                       <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                         {!isLunas && (
                           <button
@@ -824,17 +872,12 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                 })
               )}
             </div>
-
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* TAB 4: PEMBAYARAN & KWITANSI DIGITAL */}
-        {/* ========================================================= */}
+        {/* TAB 4: PEMBAYARAN */}
         {activeTab === 'PEMBAYARAN' && (
           <div className="space-y-4">
-            
-            {/* Header and Pay Action */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
@@ -858,7 +901,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               </button>
             </div>
 
-            {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
@@ -870,7 +912,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               />
             </div>
 
-            {/* Payments List */}
             <div className="space-y-2.5">
               {filteredPayments.length === 0 ? (
                 <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center text-slate-400">
@@ -919,7 +960,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                         </span>
                       </div>
 
-                      {/* Tombol Kwitansi Digital Resmi (E-Receipt) */}
                       <button
                         onClick={() => setSelectedReceipt(pay)}
                         className="py-2 px-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
@@ -933,13 +973,10 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                 ))
               )}
             </div>
-
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* TAB 5: EKSPOR LAPORAN PDF & BACKUP SPREADSHEET (XLS) */}
-        {/* ========================================================= */}
+        {/* TAB 5: LAPORAN */}
         {activeTab === 'LAPORAN' && (
           <div className="space-y-4">
             <div>
@@ -952,7 +989,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               </p>
             </div>
 
-            {/* Feature 6 Card 1: Ekspor PDF Resmi */}
             <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
               <div className="flex items-start justify-between">
                 <div>
@@ -979,7 +1015,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               </div>
             </div>
 
-            {/* Feature 6 Card 2: Backup Spreadsheet (XLS / CSV) */}
             <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
               <span className="text-[10px] font-bold tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
                 CADANGAN DATA (BACKUP)
@@ -992,7 +1027,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
               </p>
 
               <div className="pt-2 flex flex-wrap gap-2.5">
-                {/* 1. Unduh Spreadsheet Langsung */}
                 <button
                   onClick={() => downloadSpreadsheet(customers, loans, payments)}
                   className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
@@ -1001,7 +1035,6 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                   <span>Unduh File Spreadsheet (.xls)</span>
                 </button>
 
-                {/* 2. Kirim ke Email Admin */}
                 <button
                   onClick={() => openEmailBackup('dicoba.ngetes@gmail.com', customers, loans, payments)}
                   className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
@@ -1011,13 +1044,12 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
                 </button>
               </div>
             </div>
-
           </div>
         )}
 
       </main>
 
-      {/* 3. FIXED BOTTOM TAB BAR (Navigation Anchor M3 Touch Ergonomics) */}
+      {/* 3. FIXED BOTTOM TAB BAR */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
         <div className="max-w-md mx-auto grid grid-cols-5 items-center h-16 px-1">
           {[
@@ -1049,7 +1081,188 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
         </div>
       </nav>
 
-      {/* MODALS */}
+      {/* ========================================================= */}
+      {/* MODALS & POPUPS */}
+      {/* ========================================================= */}
+
+      {/* 1. Modal Pengaturan Profil & Password Admin */}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-blue-900" />
+                <h3 className="text-base font-bold text-slate-900">Pengaturan Profil & Password</h3>
+              </div>
+              <button
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {settingsError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                <span>{settingsError}</span>
+              </div>
+            )}
+
+            {settingsMessage && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{settingsMessage}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveSettings} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5 text-blue-900" />
+                  <span>Nama Lengkap</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-blue-900" />
+                  <span>Email Resmi</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-blue-900" />
+                  <span>No. WhatsApp / HP</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 outline-none focus:border-blue-700"
+                />
+              </div>
+
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-blue-900" />
+                  <span>Ubah PIN / Password (Opsional)</span>
+                </p>
+
+                <div className="mb-2">
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">PIN Lama</label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    placeholder="Masukkan PIN lama"
+                    value={oldPin}
+                    onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">PIN Baru (6 Digit)</label>
+                    <input
+                      type="password"
+                      maxLength={6}
+                      placeholder="PIN Baru"
+                      value={newPin}
+                      onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Konfirmasi PIN</label>
+                    <input
+                      type="password"
+                      maxLength={6}
+                      placeholder="Ulangi PIN"
+                      value={newPinConfirm}
+                      onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-center tracking-widest text-slate-900 outline-none focus:border-blue-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  className="flex-1 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs shadow-md shadow-blue-900/20 cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Modal Konfirmasi Reset Data Total */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-100 p-6 text-center space-y-4">
+            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto border border-rose-100">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Konfirmasi Reset Data Total</h3>
+              <p className="text-xs text-slate-500 mt-1 px-2 leading-relaxed">
+                Tindakan ini akan menghapus seluruh data transaksi, daftar nasabah, dan pengaturan yang tersimpan secara permanen.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onResetAllData) {
+                    onResetAllData();
+                  }
+                  setIsResetConfirmOpen(false);
+                }}
+                className="w-full py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shadow-md shadow-rose-600/20 cursor-pointer"
+              >
+                Ya, Hapus dan Reset Semua Data
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Standard Modals */}
       {isCustomerModalOpen && (
         <CustomerModal
           existingCustomers={customers}
@@ -1088,7 +1301,7 @@ Apakah ada yang dapat kami bantu mengenai informasi pembiayaan Anda?`;
           onRecordPayment={(pay, updatedLoan) => {
             onRecordPayment(pay, updatedLoan);
             setIsPaymentModalOpen(false);
-            setSelectedReceipt(pay); // Automatically preview receipt!
+            setSelectedReceipt(pay);
           }}
           onClose={() => {
             setIsPaymentModalOpen(false);
