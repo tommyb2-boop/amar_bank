@@ -41,15 +41,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-  // 1. Handle Admin Login
+    // 1. Handle Admin Login (Diperbaiki agar hanya mengecek PIN saja)
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
     const pinToMatch = adminPin.trim();
-    const admin = admins.find(
-      (a) => a.pin === pinToMatch || (adminEmail && a.email.toLowerCase() === adminEmail.toLowerCase().trim() && a.pin === pinToMatch)
-    );
+    // Mencari admin yang PIN-nya cocok dengan input
+    const admin = admins.find((a) => a.pin === pinToMatch);
 
     if (admin) {
       onAdminLogin(admin);
@@ -57,6 +56,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setErrorMessage('PIN Admin tidak valid. Periksa kembali PIN Anda.');
     }
   };
+
 
   // 2. Handle Customer Login (Clean & Secure - Zero Leakage)
   const handleCustomerSubmit = (e: React.FormEvent) => {
