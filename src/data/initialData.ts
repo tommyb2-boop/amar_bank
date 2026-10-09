@@ -11,6 +11,7 @@ export const INITIAL_ADMINS: AdminUser[] = [
   },
 ];
 
+
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
     id: 'CUST-1001',
