@@ -42,7 +42,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-  // 1. Handle Admin Login dengan Email & PIN
+  // 1. Handle Admin Login dengan Email & PIN (Memastikan menggunakan INITIAL_ADMINS langsung)
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
@@ -50,17 +50,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     const emailToMatch = adminEmail.trim().toLowerCase();
     const pinToMatch = adminPin.trim();
 
-    const adminList = admins && admins.length > 0 ? admins : INITIAL_ADMINS;
-    
-    // Mencocokkan email dan PIN admin
-    const admin = adminList.find(
+    // Langsung gunakan INITIAL_ADMINS agar tidak bergantung pada data lama di browser
+    const admin = INITIAL_ADMINS.find(
       (a) => a.email.toLowerCase() === emailToMatch && a.pin === pinToMatch
     );
 
     if (admin) {
       onAdminLogin(admin);
     } else {
-      setErrorMessage('Email atau PIN Admin tidak valid. Periksa kembali data Anda.');
+      setErrorMessage('Email atau PIN Admin salah. Gunakan: dicoba.ngetes@gmail.com dan 123456');
     }
   };
 
