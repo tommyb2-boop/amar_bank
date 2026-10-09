@@ -76,9 +76,11 @@ export default function App() {
   }>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SESSION);
-      return saved ? JSON.parse(saved) : { role: 'ADMIN', adminData: INITIAL_ADMINS[0] };
+      // Jika ada data sesi di localStorage, gunakan (otomatis login)
+      // Jika tidak ada (perangkat baru / belum pernah login), set role ke null (muncul halaman login)
+      return saved ? JSON.parse(saved) : { role: null };
     } catch {
-      return { role: 'ADMIN', adminData: INITIAL_ADMINS[0] };
+      return { role: null };
     }
   });
 
