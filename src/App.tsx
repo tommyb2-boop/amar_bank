@@ -41,7 +41,7 @@ export default function App() {
 
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(false);
 
-  // Sinkronisasi Real-Time dari Firebase Firestore
+  // Sinkronisasi Real-Time dari Firebase Firestore & Pengecekan Otomatis Status Pinjaman
   useEffect(() => {
     const unsubAdmins = onSnapshot(collection(db, "admins"), (snapshot) => {
       if (!snapshot.empty) {
@@ -68,6 +68,27 @@ export default function App() {
     const unsubLoans = onSnapshot(collection(db, "loans"), (snapshot) => {
       if (!snapshot.empty) {
         const data = snapshot.docs.map(doc => doc.data() as Loan);
+        
+        // Pengecekan status otomatis secara aman di dalam snapshot listener
+        data.forEach(async (loan) => {
+          let updatedStatus = loan.status;
+          if (loan.remainingBalance <= 0 && loan.status !== 'LUNAS') {
+            updatedStatus = 'LUNAS';
+          } else {
+            const daysDiff = getDaysDifference(loan.nextDueDate);
+            if (daysDiff < 0 && loan.status !== 'MENUNGGAK') {
+              updatedStatus = 'MENUNGGAK';
+            } else if (daysDiff >= 0 && daysDiff <= 3 && loan.status !== 'PERHATIAN') {
+              updatedStatus = 'PERHATIAN';
+            }
+          }
+
+          if (updatedStatus !== loan.status) {
+            const updated = { ...loan, status: updatedStatus };
+            await setDoc(doc(db, "loans", loan.id), updated);
+          }
+        });
+
         setLoans(data);
       } else {
         INITIAL_LOANS.forEach(async (l) => {
@@ -114,26 +135,6 @@ export default function App() {
       console.error(e);
     }
   }, [currentUser]);
-
-  // Automatic Due-Date Check (≤ 3 days detection for notifications)
-  useEffect(() => {
-    loans.forEach(async (loan) => {
-      if (loan.remainingBalance <= 0 && loan.status !== 'LUNAS') {
-        const updated = { ...loan, status: 'LUNAS' as const };
-        await setDoc(doc(db, "loans", loan.id), updated);
-        return;
-      }
-
-      const daysDiff = getDaysDifference(loan.nextDueDate);
-      if (daysDiff < 0 && loan.status !== 'MENUNGGAK') {
-        const updated = { ...loan, status: 'MENUNGGAK' as const };
-        await setDoc(doc(db, "loans", loan.id), updated);
-      } else if (daysDiff >= 0 && daysDiff <= 3 && loan.status !== 'PERHATIAN') {
-        const updated = { ...loan, status: 'PERHATIAN' as const };
-        await setDoc(doc(db, "loans", loan.id), updated);
-      }
-    });
-  }, [loans]);
 
   // Handlers
   const handleAdminLogin = (admin: AdminUser) => {
