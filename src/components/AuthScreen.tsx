@@ -42,17 +42,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage('');
   };
 
-  // 1. Handle Admin Login dengan Email & PIN (Memastikan menggunakan INITIAL_ADMINS langsung)
+   // 1. Handle Admin Login dengan Email & PIN (Dibersihkan dari spasi ekstra)
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
 
+    // Membersihkan spasi di awal/akhir input email dan pin
     const emailToMatch = adminEmail.trim().toLowerCase();
     const pinToMatch = adminPin.trim();
 
-    // Langsung gunakan INITIAL_ADMINS agar tidak bergantung pada data lama di browser
+    // Memeriksa langsung ke data INITIAL_ADMINS
     const admin = INITIAL_ADMINS.find(
-      (a) => a.email.toLowerCase() === emailToMatch && a.pin === pinToMatch
+      (a) => a.email.trim().toLowerCase() === emailToMatch && a.pin.trim() === pinToMatch
     );
 
     if (admin) {
